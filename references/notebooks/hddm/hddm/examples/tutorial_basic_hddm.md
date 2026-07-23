@@ -1,0 +1,331 @@
+# tutorial basic hddm
+
+> Converted from `hddm/hddm/examples/tutorial_basic_hddm.ipynb`. Code is preserved; rich outputs are omitted.
+
+## Basic HDDM Tutorial
+
+In the following we will show an example session of using HDDM to analyze a real-world dataset. The main purpose is to provide an overview of some of the funcionality and interface. By no means, however, is it a complete overview of all the functionality in HDDM. For more information, including on how to use HDDM as a command-line utility, we refer to the online tutorial at http://ski.clps.brown.edu/hddm_docs/tutorial.html and the how-to at http://ski.clps.brown.edu/hddm_docs/howto.html. For a reference manual, see http://ski.clps.brown.edu/hddm_docs.
+
+First, we have to import the modules we are going to use so that they are available in our namespace. Pandas provides a table-oriented data-structure and matplotlib is a module for generating graphs and plots.
+
+### Code cell 4
+
+```python
+import pandas as pd
+import matplotlib.pyplot as plt
+```
+
+Next, we will import HDDM. At the time of this writing, this version was used.
+
+### Code cell 6
+
+```python
+%matplotlib inline
+import hddm
+
+print(hddm.__version__)
+```
+
+### Loading data
+
+Next, we will load in a data set. The easiest way to get your data
+into HDDM is by storing it in a csv (comma-separated-value, see below) file. In this example we will be using data collected
+in a reward-based decision making experiment in our lab (Cavanagh et al 2011). In brief, subjects choose between two symbols that have different histories of reinforcement, which they first acquire through a learning phase: some symbols more often leads to wins  (W; 80%, 70% and 60% of trials in which they are selected), whereas others only lead to win on 40%, 30%, or 20% of the time and otherwise lead to losses (L). A test phase ensures in which subjects choose between all paired combination of symbols without feedback. These test trials can be devided into win-win (WW) trials, in which they select between two symbols that had led to wins before (but one more often than another); lose-lose trials (LL), and win-lose (WL) trials, which are the easiest because one symbol had been a winner most of the time. Thus WW and LL decisions together comprise high conflict (HC) test trials (although there are other differences between them, we don't focus on those here), whereas WL decisions are low conflict (LC).  The main hypothesis of the study was that high conflict trials induce an increase in the decision threshold, and that the mechanism for this threshold modulation depends on communication between mediofrontal cortex (which exhibits increased activity under conditions of choice uncertainty or conflict) and the subthalamic nucleus (STN) of the basal ganglia (which provides a temporary brake on response selection by increasing the decision threshold). The details of this mechanism are described in other modeling papers (e.g., Ratcliff & Frank 2012). Cavanagh et al 2011 tested this theory by measuring EEG activity over mid-frontal cortex, focusing on the theta band, given prior associations with conflict, and testing whether trial-to-trial variations in frontal theta were related to adjustments in decision threshold during high conflict trials. They tested the STN component of the theory by administering the same experiment to patients who had deep brain stimulation (dbs) of the STN, which interferes with normal processing.  
+
+The first ten lines of the data file look as follows:
+
+### Code cell 9
+
+```python
+!head cavanagh_theta_nn.csv
+```
+
+We use the ``hddm.load_csv()`` function to load this file.
+
+### Code cell 11
+
+```python
+data = hddm.load_csv("./cavanagh_theta_nn.csv")
+```
+
+### Code cell 12
+
+```python
+data.head(10)
+```
+
+Lets look at the RT distributions of each individual subject using pandas' `groupby()` functionality. Because there are two possible responses (here we are using accuracy coding where 1 means the more rewarding symbol was chosen,  and 0 the less rewarding) we flip error RTs to be negative.
+
+### Code cell 14
+
+```python
+data = hddm.utils.flip_errors(data)
+
+fig = plt.figure()
+ax = fig.add_subplot(111, xlabel="RT", ylabel="count", title="RT distributions")
+for i, subj_data in data.groupby("subj_idx"):
+    subj_data.rt.hist(bins=20, histtype="step", ax=ax)
+
+plt.savefig("hddm_demo_fig_00.pdf")
+```
+
+### Fitting a hierarchical model
+
+Lets fit a hierarchical DDM to this data set, starting off first with the simplest model that does not allow parameters to vary by condition.
+
+### Code cell 17
+
+```python
+# Instantiate model object passing it our data (no need to call flip_errors() before passing it).
+
+# This will tailor an individual hierarchical DDM around your dataset.
+m = hddm.HDDM(data)
+# find a good starting point which helps with the convergence.
+m.find_starting_values()
+# start drawing 2000 samples and discarding 20 as burn-in (usually you want to have a longer burn-in period)
+m.sample(2000, burn=20)
+```
+
+We now want to analyze our estimated model. `m.print_stats()` will print a table of summary statistics for each parameters' posterior. Because that is quite long we only print a subset of the parameters using pandas selection functionality.
+
+### Code cell 19
+
+```python
+stats = m.gen_stats()
+stats[stats.index.isin(["a", "a_std", "a_subj.0", "a_subj.1"])]
+```
+
+As you can see, the model estimated the group mean parameter for threshold `a`, group variability `a_std` and individual subject parameters `a_subj.0`. Other parameters are not shown here.
+
+The inference algorithm, MCMC, requires the chains of the model to have properly converged. While there is no way to guarantee convergence for a finite set of samples in MCMC,  there are many heuristics that allow you identify problems of convergence. One main analysis to look at is the trace, the autocorrelation, and the marginal posterior. You can plot these using the `plot_posteriors()` function. For the sake of brevity we only plot three here. In practice, however, you will always want to examine all of them.
+
+### Code cell 21
+
+```python
+m.plot_posteriors(["a", "t", "v", "a_std"])
+```
+
+As you can see, there are no drifts or large jumps in the trace. The autocorrelation is also very low.
+
+The Gelman-Rubin statistic provides a more formal test for convergence that compares the intra-chain variance to the intra-chain variance of different runs of the same model.
+
+### Code cell 24
+
+```python
+models = []
+for i in range(5):
+    m = hddm.HDDM(data)
+    m.find_starting_values()
+    m.sample(2000, burn=500)
+    models.append(m)
+
+hddm.analyze.gelman_rubin(models)
+```
+
+We might also be interested in how well the model fits the data. To inspect this visually you can call `plot_posterior_predictive()` to plot individual subject RT distributions in red on top of the predictive likelihood in blue.
+
+### Code cell 26
+
+```python
+m.plot_posterior_predictive(figsize=(14, 10))
+```
+
+While visually the fit looks decent, we also have prior knowledge about our experiment which could be leveraged to improve the model. For example, we would expect that because LL and WW trials are harder than WL trials, drift rate would be higher in WL, which has lower uncertainty about the correct choice. (One could also develop a posterior predictive check statistic that would evaluate whether accuracy and mean RT are different in the different conditions. Since the parameters of the model were estimated to be the same across conditions, the posterior predictive distributions for these conditions would not look different from each other, whereas those in the data do. A formal posterior predictive check would thus show that the data violates the simple assumptions of the model. This is not evident above because we simply plotted the distributions collapsed across conditions). 
+
+In any case, we can create a new model quite easily which estimates separate drift-rate `v` for those different conditions by using the `depends_on` keyword argument. This argument expects a Python `dict` which maps the parameter to be split to the column name containing the conditions we want to split by.
+
+### Code cell 28
+
+```python
+m_stim = hddm.HDDM(data, depends_on={"v": "stim"})
+m_stim.find_starting_values()
+m_stim.sample(2000, burn=100)
+```
+
+We will skip examining the traces for this model and instead look at the posteriors of `v` for the different conditions. Below you can see that the drift rate for the low conflict WL condition is substantially greater than that for the other two conditions, which are fairly similar to each other.
+
+### Code cell 30
+
+```python
+v_WW, v_LL, v_WL = m_stim.nodes_db.node[["v(WW)", "v(LL)", "v(WL)"]]
+hddm.analyze.plot_posterior_nodes([v_WW, v_LL, v_WL])
+plt.xlabel("drift-rate")
+plt.ylabel("Posterior probability")
+plt.title("Posterior of drift-rate group means")
+plt.savefig("hddm_demo_fig_06.pdf")
+```
+
+While it would be easy to provide syntacic sugar for the above expression there are many cases where you want access to the underlying distributions. These are stored inside of `nodes_db` which is a pandas `DataFrame` containing information about each distribution. Here we retrieve the actual node objects containing the trace from the `node` colum.
+
+One benefit of estimating the model in a Bayesian framework is that we can do significance testing directly on the posterior rather than relying on frequentist statistics (See Kruschke's book for many examples of the advantages of this approach). For example, we might be interested in whether the drift-rate for WW is larger than that for LL, or whether drift-rate for LL is larger than WL. The below code allows us to examine the proportion of the posteriors in which the drift rate for one condition is greater than the other. It can be seen that the posteriors for LL do not overlap at all for WL, and thus the probability that LL is greater than WL should be near zero.
+
+### Code cell 33
+
+```python
+print("P(WW > LL) = ", (v_WW.trace() > v_LL.trace()).mean())
+print("P(LL > WL) = ", (v_LL.trace() > v_WL.trace()).mean())
+```
+
+Lets compare the two models using the deviance information criterion (DIC; lower is better). Note that the DIC measures the fit of the model to the data, penalizing for complexity in the addition of degrees of freedom (the model with three drift rates has more dF than the model with one). The DIC is known to be somewhat biased in selecting the model with greater complexity, although alternative forms exist (see Plummer 2008). One should use the DIC with caution, although other forms of model comparison such as the Bayes Factor (BF) have other problems, such as being overly sensitive to the prior parameter distributions of the models. Future versions of HDDM will include the partial Bayes Factor, which allows the BF to be computed based on informative priors taken from a subset of the data, and which we generally believe to provide a better measure of model fit. Nevertheless, DIC can be a useful metric with these caveats in mind.
+
+### Code cell 35
+
+```python
+print("Lumped model DIC: %f" % m.dic)
+print("Stimulus model DIC: %f" % m_stim.dic)
+```
+
+## Within-subject effects
+
+Note that while the `m_stim` model we created above estimates different drift-rates `v` for each subject, it implicitly assumes that the different conditions are completely independent of each other, because each drift rate was sampled from a separate group prior. However, there may be individual differences in overall performance, and if so it is reasonable to assume that someone who would be better at `WL` would also be better at `LL`. To model this intuition we can use a within-subject model where an intercept is used to capture overall performance in the 'WL' condition as a baseline, and then the other `LL` and `WW` conditions are expressed relative to `WL`. (Perhaps every subject has a higher drift in WL than LL but there is huge variance in their overall drift rates. In this scenario, the earlier model would not have the power to detect the effect of condition on this within subject effect, because there would be large posterior variance in all of the drift rates, which would then overlap with each other. In contrast, the within-subject model would estimate large variance in the intercept but still allow the model to infer a non-zero effect of condition with high precision).
+
+`HDDM` supports this via the `patsy` module which transforms model strings to design matrices.
+
+### Code cell 38
+
+```python
+from patsy import dmatrix
+
+dmatrix("C(stim, Treatment('WL'))", data.head(10))
+```
+
+`Patsy` model specifications can be passed to the `HDDMRegressor` class as part of a descriptor that contains the string describing the linear model and the `outcome` variable that should be replaced with the output of the linear model -- in this case `v`.
+
+### Code cell 40
+
+```python
+m_within_subj = hddm.HDDMRegressor(data, "v ~ C(stim, Treatment('WL'))")
+```
+
+### Code cell 41
+
+```python
+m_within_subj.sample(2000, burn=100)
+```
+
+### Code cell 42
+
+```python
+v_WL, v_LL, v_WW = m_within_subj.nodes_db.loc[
+    [
+        "v_Intercept",
+        "v_C(stim, Treatment('WL'))[T.LL]",
+        "v_C(stim, Treatment('WL'))[T.WW]",
+    ],
+    "node",
+]
+hddm.analyze.plot_posterior_nodes([v_WL, v_LL, v_WW])
+plt.xlabel("drift-rate")
+plt.ylabel("Posterior probability")
+plt.title("Group mean posteriors of within-subject drift-rate effects.")
+plt.savefig("hddm_demo_fig_07.pdf")
+```
+
+Note that in the above plot `LL` and `WW` are expressed relative to the `WL` condition (i.e. `v_Intercept`). You can see that the overall drift rate intercept, here applying to WL condition, is positive (mode value roughly 0.7), whereas the within subject effects of condition (WW and LL) are negative and do not overlap with zero.
+
+## Fitting regression models
+
+As mentioned above, cognitive neuroscience has embraced the DDM as it enables to link psychological processes to cognitive brain measures. The Cavanagh et al (2011) study is a great example of this. EEG recordings provided a trial-ty-trial measure of brain activity (frontal theta), and it was found that this activity correlated with increases in decision threshold in high conflict trials.  Note that the data set and results exhibit more features than we consider here for the time being (specifically the manipulation of deep brain stimulation), but for illustrative purposes, we replicate here that main theta-threshold relationship in a model restricted to participants without brain stimulation.  For more information, see http://ski.clps.brown.edu/papers/Cavanagh_DBSEEG.pdf
+
+### Code cell 46
+
+```python
+m_reg = hddm.HDDMRegressor(
+    data[data.dbs == 0], "a ~ theta:C(conf, Treatment('LC'))", depends_on={"v": "stim"}
+)
+```
+
+Instead of estimating one static threshold per subject across trials, this model assumes the threshold to vary on each trial according to the linear model specified above (as a function of their measured theta activity). We also test whether this effect interacts with decision conflict. For the stimuli we use dummy treatment coding with the intercept being set on the WL condition. Internally, HDDM uses Patsy for the linear model specification, see the [Patsy documentation](https://patsy.readthedocs.org/en/latest/) for more details. The output notifies us about the different variables that being estimated as part of the linear model. The Cavanagh paper, and results shown later below, illustrate that this brain/behavior relationship differs as a function of whether patients are on or off STN deep brain stimulation, as hypothesized by the model that STN is responsible for increasing the decision threshold when cortical theta rises).
+
+### Code cell 48
+
+```python
+m_reg.sample(2000, burn=100)
+```
+
+### Code cell 49
+
+```python
+theta = m_reg.nodes_db.node["a_theta:C(conf, Treatment('LC'))[HC]"]
+hddm.analyze.plot_posterior_nodes([theta], bins=20)
+plt.xlabel("Theta coeffecient in ")
+print("P(a_theta < 0) = ", (theta.trace() < 0).mean())
+```
+
+The above posterior shows that the effect of trial to trial variations in frontal theta are to increase the estimated decision threshold: the regression coefficient is positive, and more than 96% of it is greater than zero. 
+
+As noted above, this experiment also tested patients on deep brain stimulation (dbs). The full model in the paper thus allowed an additional factor to estimate how dbs interacts with theta-threshold relationship. Here we show for illustrative purposes that we can capture the same effect by simply fitting a separate model to data only including the case when dbs was turned on. You should see below that in this case, the influence of theta on threshold reverses. This exercise thus shows that HDDM can be used both to assess the influence of trial-by-trial brain measures on DDM parameters, but also how parameters vary when brain state is manipulated.
+
+### Code cell 51
+
+```python
+m_reg_off = hddm.HDDMRegressor(
+    data[data.dbs == 1], "a ~ theta:C(conf, Treatment('LC'))", depends_on={"v": "stim"}
+)
+```
+
+### Code cell 52
+
+```python
+m_reg_off.sample(2000, burn=100)
+```
+
+### Code cell 53
+
+```python
+theta = m_reg_off.nodes_db.node["a_theta:C(conf, Treatment('LC'))[HC]"]
+hddm.analyze.plot_posterior_nodes([theta], bins=10)
+print("P(a_theta > 0) = ", (theta.trace() > 0).mean())
+```
+
+## Dealing with outliers
+
+It is common to have outliers in any data set and RT data is no exception. Outliers present a serious challenge to likelihood-based approaches, as used in HDDM. Consider the possibility that 5% of trials are not generated by the DDM process, but by some other process (e.g. due to an attentional lapse). The observed data in those trials may be very unlikely given the best DDM parameters that fit 95% of the data. In the extreme case, the likelihood of a single trial may be zero (e.g. if subjects respond very quickly, faster than the non-decision time `t` parameter that would fit the rest of the data). Thus this single outlier would force the DDM parameters to adjust substantially.  To see the effect of this we will generate data with outliers, but fit a standard DDM model without taking outliers into account.
+
+### Code cell 56
+
+```python
+outlier_data, params = hddm.generate.gen_rand_data(
+    params={"a": 2, "t": 0.4, "v": 0.5}, size=200, n_fast_outliers=10
+)
+```
+
+### Code cell 57
+
+```python
+m_no_outlier = hddm.HDDM(outlier_data, p_outlier=0.0)
+m_no_outlier.sample(2000, burn=50)
+```
+
+### Code cell 58
+
+```python
+m_no_outlier.plot_posterior_predictive()
+plt.title("Posterior predictive")
+plt.xlabel("RT")
+plt.ylabel("Probability density")
+plt.savefig("hddm_demo_fig_10.pdf")
+```
+
+As you can see, the predictive likelihood does not fit the RT data very well. The model predicts far more RTs near the leading edge of the distribution than are actually observed. This is because non-decision time `t` is forced to be estimated small enough to account for a few fast RTs.  
+
+What we can do instead is fit a mixture model which assumes that outliers come from a uniform distribution. (Note, outliers do not have to be very fast or very slow, and the above example is just an obvious illustration. Some proportion of the trials can be assumed to simply come from a different process for which we make no assumptions about its generation, and hence use a uniform distribution. This allows the model to find the best DDM parameters that capture the majority of trials).   Here, we specify that we expect roughly 5% outliers in our data.
+
+### Code cell 60
+
+```python
+m_outlier = hddm.HDDM(outlier_data, p_outlier=0.05)
+m_outlier.sample(2000, burn=50)
+```
+
+### Code cell 61
+
+```python
+m_outlier.plot_posterior_predictive()
+plt.title("Posterior predictive")
+plt.xlabel("RT")
+plt.ylabel("Probability density")
+plt.savefig("hddm_demo_fig_11.pdf")
+```
+
+As you can see, the model provides a much better fit. The outlier RTs are having less of an effect because they get assigned to the uniform outlier distribution.

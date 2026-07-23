@@ -1,0 +1,44 @@
+{
+  "data_file": "data/processed/trials.csv",
+  "model": {
+    "class": "HDDM",
+    "include": ["v", "a", "t", "z"],
+    "depends_on": {},
+    "formula": null,
+    "extra_kwargs": {
+      "p_outlier": 0.05
+    }
+  },
+  "sampling": {
+    "draws": 2500,
+    "burn": 1000,
+    "chains": 4,
+    "parallel": true,
+    "save_name": "models/baseline"
+  },
+  "inference_data": {
+    "sample_prior": false,
+    "ppc": true,
+    "n_ppc": 100,
+    "loglike": false,
+    "n_loglike": null,
+    "n_jobs": 1
+  },
+  "comparison": {
+    "method": "loo",
+    "models": {
+      "baseline": "models/baseline.nc"
+    }
+  },
+  "simulation": {
+    "seed": 2026,
+    "subjects": 20,
+    "trials_per_subject": 200,
+    "parameters": {
+      "v": 1.0,
+      "a": 1.5,
+      "t": 0.3,
+      "z": 0.5
+    }
+  }
+}

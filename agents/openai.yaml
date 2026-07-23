@@ -1,0 +1,7 @@
+interface:
+  display_name: "dockerHDDM workflows and debugging"
+  short_description: "Build, explain, simulate, infer, and debug dockerHDDM projects"
+  default_prompt: "Use $dockerhddm-skill to initialize a reproducible dockerHDDM project and generate the correct workflow code."
+
+policy:
+  allow_implicit_invocation: false

@@ -1,0 +1,15 @@
+__pycache__/
+.ipynb_checkpoints/
+*.py[cod]
+*.db
+*.hddm
+*.nc
+*.log
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+models/*
+!models/.gitkeep
+logs/*
+!logs/.gitkeep

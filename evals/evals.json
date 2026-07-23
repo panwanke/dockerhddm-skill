@@ -1,0 +1,53 @@
+{
+  "skill_name": "dockerhddm-skill",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "/dockerhddm-workflow 我有 trial-level CSV，想比较 condition 是否影响 v。请初始化项目并生成可运行的拟合、诊断、PPC 与模型比较代码。",
+      "expected_output": "Creates an inference project, validates seconds/coding/cells, fits a baseline before a v-by-condition model, stages sample and to_infdata, saves artifacts, and includes convergence plus absolute-fit checks.",
+      "assertions": [
+        "Uses the fixed project layout",
+        "Does not pass n_jobs to model.sample",
+        "Checks rt units and response coding",
+        "Includes PPC before interpretation"
+      ],
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "/dockerhddm-workflow 我还没有数据，但理论预测 easy 条件的 v 高于 hard。生成多组参数、模拟 40 人每条件 200 trials，做参数恢复并画图。",
+      "expected_output": "Creates a simulation project, reads model_config bounds, records seed and ground truth, generates conditions, refits the planned model, and reports bias/RMSE/coverage with behavioral and recovery plots.",
+      "assertions": [
+        "Uses simulation rather than posterior inference as the first step",
+        "Records parameter order, bounds, seed, and truth",
+        "Checks generated data contract",
+        "Varies theoretically targeted parameters"
+      ],
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "/dockerhddm-workflow 100个被试每人1000试次，PPC/loglike时 kernel died。诊断并给安全代码。",
+      "expected_output": "Estimates memory, explains trace/PPC/loglike/merge multipliers, keeps n_jobs out of sample, stages to_infdata with bounded n_ppc and n_jobs=1, and discusses subsampled LOO plus WSL swap.",
+      "assertions": [
+        "Runs or recommends estimate_memory.py",
+        "Separates sample from to_infdata",
+        "Does not imply more RAM fixes invalid modeling",
+        "Recommends the OOM article with a source-level caveat"
+      ],
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "/dockerhddm-workflow 我计划每条件40次试验、正确率98%，能否估计 sv、sz、st 并解释组间差异？",
+      "expected_output": "Flags sparse errors and likely poor identifiability, cites experimental-design guidance, recommends design-specific recovery across trial/participant counts, and advises a simpler model or redesigned task before interpretation.",
+      "assertions": [
+        "Recognizes a theory/design problem",
+        "Does not promise recovery from successful sampling",
+        "Discusses error counts and stationarity",
+        "Requires parameter recovery"
+      ],
+      "files": []
+    }
+  ]
+}
