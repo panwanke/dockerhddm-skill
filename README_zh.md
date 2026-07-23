@@ -1,3 +1,5 @@
+<p align="center"><img src="dockerhddm_skill_icon.png" alt="dockerHDDM" width="256"></p>
+
 # dockerHDDM skill
 
 > [English](README.md)
