@@ -37,7 +37,43 @@ def main() -> int:
             "n_jobs popped by sample before PyMC2 call:",
             'kwargs.pop("n_jobs"' in sample_source,
         )
+
+    # Version authority check.
+    expected_tag = "hcp4715/hddm:1.1.0"
+    print(f"\nExpected image tag (this skill's knowledge base): {expected_tag}")
+    selected_tag = _read_env_image_tag()
+    if selected_tag:
+        print(f"env.json image_tag: {selected_tag}")
+        if selected_tag != expected_tag:
+            print(
+                "WARNING: env.json uses a non-1.1.0 tag. Our workflow / API / "
+                "debugging guidance is validated against 1.1.0; when behavior "
+                "conflicts, 1.1.0 is authoritative."
+            )
+    else:
+        print(
+            "NOTE: no project env.json found. Our knowledge is anchored to "
+            f"{expected_tag}; other tags may differ."
+        )
     return 0
+
+
+def _read_env_image_tag() -> str | None:
+    """Best-effort read of image_tag from a project env.json."""
+    candidates = [
+        Path.cwd() / "env.json",
+        Path("/home/jovyan/work/env.json"),
+    ]
+    for path in candidates:
+        try:
+            if path.is_file():
+                import json
+
+                data = json.loads(path.read_text(encoding="utf-8"))
+                return data.get("image_tag")
+        except Exception:
+            continue
+    return None
 
 
 if __name__ == "__main__":

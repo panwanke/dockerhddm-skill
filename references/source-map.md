@@ -2,8 +2,8 @@
 
 ## Precedence
 
-1. The commits pinned as submodules by `{dockerhddm_repo}` define dockerHDDM
-   1.1.0 behavior.
+1. The commits pinned as submodules by `dockerhddm_repo` (optional, read from
+   the project-local `env.json`) define dockerHDDM 1.1.0 behavior.
 2. Tests and notebooks at the same repository revision document intended use.
 3. Separate custom clones record earlier maintenance history.
 4. Articles and old tutorials are explanatory; confirm their code against 1–3.
@@ -17,15 +17,20 @@
 | PyMC2 | `ed2dc4ca0f2c2bf48fa2f07909a1c36f8bac1b2f` | NumPy 2 support; modern setuptools/F2PY build |
 | ssm-simulators | `9eaaad72fda953d17b726de3272edfcac5cdf5cd` | Stable dockerHDDM branch and NumPy 2 build |
 
-Resolve the repository from `paths.dockerhddm_repo` in `env.json`.
+Resolve the repository from `dockerhddm_repo` in the project-local
+`<project>/env.json`. Leave it empty to rely on the pinned image tag and the
+`/home/jovyan/work` mount convention; the skill does not require a local source
+clone to run.
 
 ## Legacy custom clones
 
-The configured clones are older than the pinned submodules:
+The configured clones are older than the pinned submodules. If you keep local
+clones, record their paths under optional keys in `env.json` (e.g.
+`hddm_custom_legacy`, `kabuki_custom_legacy`, `pymc2_custom_legacy`):
 
-- `paths.hddm_custom_legacy`: commit `5e4dac1`;
-- `paths.kabuki_custom_legacy`: commit `4be59f0`;
-- `paths.pymc2_custom_legacy`: commit `8c36a4fa` on `dev`.
+- `hddm_custom_legacy`: commit `5e4dac1`;
+- `kabuki_custom_legacy`: commit `4be59f0`;
+- `pymc2_custom_legacy`: commit `8c36a4fa` on `dev`.
 
 Use them to understand historical changes, reproduce old failures, or compare
 behavior. Do not use them to answer “what does dockerHDDM 1.1.0 run?” without

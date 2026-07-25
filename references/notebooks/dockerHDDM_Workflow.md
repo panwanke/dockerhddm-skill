@@ -12,7 +12,7 @@ Author:
 
 This is a supplementary notebook for the introductary paper *dockerHDDM: A user-friendly environment for Bayesian Hierarchical Drift-Diffusion Modeling.*. 
 
-This notebook was tested in docker image [`hcp4715/hddm:1.0.1`](https://hub.docker.com/r/hcp4715/hddm/tags), where the packages `kabuki` were rectfied to RC version as below code box.
+This notebook targets dockerHDDM `1.1.0` (originally validated on `hcp4715/hddm:1.0.1`), where the `kabuki` packages are the maintained forks used in this skill.
 
 Preprint of this manuscript: https://psyarxiv.com/6uzga/
 

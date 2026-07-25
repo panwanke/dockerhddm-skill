@@ -12,7 +12,7 @@ description: >
 
 # dockerHDDM skill
 
-Version: **0.2.2**  
+Version: **0.2.5**  
 Slash command: **`/dockerhddm-workflow`**
 
 ## Route the request
@@ -33,28 +33,54 @@ diagnostics → PPC/model comparison → interpretation.
 
 ## Establish the runtime first
 
-1. Resolve source paths from `{env_root}/env.json`; never copy
-   personal absolute paths into generated projects.
-2. Treat the submodule commits pinned by `{dockerhddm_repo}` as authoritative.
+0. **Load project-local `env.json` (required).** All important runtime config
+   lives in `<project>/env.json` — **never** in a global directory. On every run,
+   first check for this file in the project directory:
+   - If it exists and is non-empty, load it: read `image_tag` (which dockerHDDM
+     version to pull/run), `mount` (container mount point), `dockerhddm_repo`
+     (optional local source clone), and `default_mode`.
+   - If it is **missing or empty**, generate it with
+     `python scripts/init_project.py <project> --mode <mode> [--image-tag <tag>]`,
+     then **remind the user to add one line to their `AGENTS.md`** so the agent
+     reads it first each time:
+     > 每次开始本项目工作前，先阅读项目根目录的 `env.json`，再动手。
+   Never copy personal absolute paths into generated projects or into `env.json`.
+1. Treat the submodule commits pinned by `dockerhddm_repo` (optional, from
+   `env.json`) as authoritative when present; otherwise rely on the pinned image.
    Separate legacy clones are diagnostic history, not the v1.1 runtime. Read
    [source-map.md](references/source-map.md).
-3. Run `python scripts/inspect_environment.py` inside the target container or
-   environment. Do not assume an API from a current upstream HDDM installation.
-4. Use dockerHDDM `1.1.0` unless the user explicitly requests another tag. Read
-   [docker-runtime.md](references/docker-runtime.md).
+2. Run `python scripts/inspect_environment.py` inside the target container or
+   environment. It prints the expected tag (`1.1.0`) and warns on mismatch. Do
+   not assume an API from a current upstream HDDM installation.
+3. **Version policy.** Use the `image_tag` from `env.json` (default
+   `hcp4715/hddm:1.1.0`). The skill also supports `1.0.1`, `0.8`, `latest`, and
+   other tags — set `image_tag` accordingly (or pass `--image-tag` to init).
+   **However, our workflow, API notes, and debugging guidance are validated
+   against `1.1.0`.** If you use another tag and hit behavior that conflicts with
+   this skill, warn the user that `1.1.0` is authoritative and report the
+   discrepancy. See [docker-runtime.md](references/docker-runtime.md).
+   For **launch configurations** (`--cpus` core limit, multiple `-v` mounts,
+   custom `-p` host ports, `-w` working dir, interactive vs `bash -lc` batch) and
+   the **two usage modes** (Jupyter notebook + how to connect to the kernel vs
+   Bash + plain Python scripts), read the "Launch configurations" and "Two usage
+   modes" sections of [docker-runtime.md](references/docker-runtime.md).
 
 ## Initialize projects
 
-Run:
+Run (this always writes a project-local `env.json`; pass `--image-tag` to use
+a non-default dockerHDDM version):
 
 ```bash
 python scripts/init_project.py <project-dir> --mode inference
 python scripts/init_project.py <project-dir> --mode simulation
 python scripts/init_project.py <project-dir> --mode hybrid
+python scripts/init_project.py <project-dir> --mode hybrid --image-tag hcp4715/hddm:1.0.1
 ```
 
-Refuse to overwrite a non-empty destination. Then tailor `config/model.json`,
-the data dictionary, and only the scripts relevant to the user's model.
+Refuse to overwrite a non-empty destination that already has `env.json`. For an
+existing project that only lacks `env.json`, init bootstraps just that file.
+Then tailor `config/model.json`, the data dictionary, and only the scripts
+relevant to the user's model.
 
 ## Enforce the data contract
 
@@ -147,6 +173,9 @@ Search large references with `rg` before loading whole files.
 
 - Do not expose names, server hosts, usernames, raw data, credentials, or
   unpublished project-specific model labels from example projects.
+- Store runtime config (image tag, mount, optional source repo) in the
+  project-local `env.json`; never write personal absolute paths there or into
+  generated projects.
 - Translate reusable structure into generic roles (`data`, `scripts`, `models`,
   `results`, `figs`, `docs`, `logs`).
 - Cite source commit hashes or notebook paths when explaining customized APIs.
@@ -159,7 +188,6 @@ On every material update:
 
 1. bump the semantic version above;
 2. append the change to [version-history.md](references/version-history.md);
-3. run `quick_validate.py`;
-4. run the scripts and compile the project template;
-5. execute the eval prompts in `evals/evals.json`;
-6. update the central skills index through `skill-manager`.
+3. run the scripts and compile the project template;
+4. execute the eval prompts in `evals/evals.json`;
+5. update the central skills index through `skill-manager`.

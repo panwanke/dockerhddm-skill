@@ -220,7 +220,7 @@ ronment and how to use  it in practical data analysis   dockerHDDM, which corres
        2.1 Open terminal & Run command line           2.2 Open URL & Enter Jupyter
                                  Terminal
        user@DESKTOP:/$ docker pull hcp4715/hddm
-                                                                                                     http://127.0.0.1:8888/?token=0ce749eb...       user@DESKTOP:/$ docker run -it --rm -p 8888:88
+                                                                                                     http://127.0.0.1:8888/?token=jupyter-token       user@DESKTOP:/$ docker run -it --rm -p 8888:88
       88 -v $(pwd):/home/jovyan/work hcp4715/hddm j
        upyter notebook
 
@@ -229,7 +229,7 @@ ronment and how to use  it in practical data analysis   dockerHDDM, which corres
        browser:
            ...
            Copy and paste URL:
-             http://127.0.0.1:8888/?token=0ce749eb...
+             http://127.0.0.1:8888/?token=jupyter-token
 
      3. HDDM analysis workflow
 
